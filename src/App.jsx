@@ -8,10 +8,10 @@ const fmt = (n, c) =>
   `${SYM[c] || ''}${Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: c === 'NGN' ? 0 : 2, minimumFractionDigits: c === 'NGN' ? 0 : 2 })}`;
 
 const MEMBERS = [
-  { id: 'tolu', name: 'Tolu Adeyemi', city: 'London', flag: '🇬🇧', ccy: 'GBP', bank: 'Monzo ••4821' },
-  { id: 'chidi', name: 'Chidi Okafor', city: 'Toronto', flag: '🇨🇦', ccy: 'CAD', bank: 'Interac · chidi@mail.ca' },
-  { id: 'ada', name: 'Ada Okafor', city: 'Lagos', flag: '🇳🇬', ccy: 'NGN', bank: 'GTBank ••0193', bank_id: 'gtb', account_number: '0123450193' },
-  { id: 'amaka', name: 'Amaka Bello', city: 'Houston', flag: '🇺🇸', ccy: 'USD', bank: 'Chase ••7730' },
+  { id: 'tolu', name: 'Tolu Adeyemi', city: 'London', flag: 'GB', ccy: 'GBP', bank: 'Monzo ••4821' },
+  { id: 'chidi', name: 'Chidi Okafor', city: 'Toronto', flag: 'CA', ccy: 'CAD', bank: 'Interac · chidi@mail.ca' },
+  { id: 'ada', name: 'Ada Okafor', city: 'Lagos', flag: 'NG', ccy: 'NGN', bank: 'GTBank ••0193', bank_id: 'gtb', account_number: '0123450193' },
+  { id: 'amaka', name: 'Amaka Bello', city: 'Houston', flag: 'US', ccy: 'USD', bank: 'Chase ••7730' },
 ];
 
 // Rotation: who collects the pot each month

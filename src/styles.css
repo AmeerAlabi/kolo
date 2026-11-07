@@ -163,3 +163,4 @@ code { font: 12px/1.4 ui-monospace, 'SF Mono', Consolas, monospace; }
 .card .r-right { color: #a9c8b2; }
 .card .done .r-right, .card .current .r-right, .card .live .r-right { color: var(--kiwi); }
 .card .why { background: #ffffff12; color: #d8ebdc; }
+.av span { right: -6px; bottom: -4px; font-size: 9.5px; font-weight: 800; letter-spacing: 0.04em; line-height: 1; padding: 3px 5px; border-radius: 6px; background: var(--forest); color: var(--kiwi); border: 2px solid var(--forest); box-shadow: 0 0 0 1.5px var(--kiwi); }
