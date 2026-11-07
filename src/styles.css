@@ -142,3 +142,24 @@ code { font: 12px/1.4 ui-monospace, 'SF Mono', Consolas, monospace; }
   .grid { grid-template-columns: 1fr; }
   .pot-amt { font-size: 38px; }
 }
+
+/* Dark green cards (no white on the main page) */
+.card { background: var(--forest); color: #eaf5e4; box-shadow: none; }
+.card .card-h h2 { color: var(--kiwi); }
+.card .muted, .card small { color: #a9c8b2; }
+.card .members li { border-top-color: #ffffff1a; }
+.card .who b { color: #fff; }
+.card .av { background: var(--kiwi); color: var(--forest); }
+.card .tag { background: var(--kiwi); color: var(--forest); }
+.card .paid b { color: #fff; }
+.card .paid small { color: var(--kiwi); }
+.card .btn.ghost { background: var(--kiwi); color: var(--forest); }
+.card .btn.ghost:hover { background: #b4ee80; }
+.card .rounds b { color: #fff; }
+.card .rounds li:not(:last-child)::before { background: #ffffff26; }
+.card .dot { background: transparent; border-color: #ffffff40; }
+.card .done .dot { background: var(--kiwi); border-color: var(--kiwi); }
+.card .current .dot, .card .live .dot { background: var(--kiwi); border-color: #fff; }
+.card .r-right { color: #a9c8b2; }
+.card .done .r-right, .card .current .r-right, .card .live .r-right { color: var(--kiwi); }
+.card .why { background: #ffffff12; color: #d8ebdc; }
