@@ -5,34 +5,27 @@
 const BASE = process.env.BLAAIZ_BASE_URL || 'https://api-dev.blaaiz.com';
 const CLIENT_ID = process.env.BLAAIZ_CLIENT_ID;
 const CLIENT_SECRET = process.env.BLAAIZ_CLIENT_SECRET;
-const API_KEY = process.env.BLAAIZ_API_KEY;
+// Scopes Kolo needs (space-separated, per Blaaiz OAuth docs)
+const SCOPE = process.env.BLAAIZ_OAUTH_SCOPE || 'fees:read payout:create transaction:read bank:read wallet:read';
 
-export const MODE = (CLIENT_ID && CLIENT_SECRET) || API_KEY ? 'live-sandbox' : 'mock';
+export const MODE = CLIENT_ID && CLIENT_SECRET ? 'live-sandbox' : 'mock';
 
 let cachedToken = null;
 let tokenExpiry = 0;
 
 async function getAuthHeader() {
-  if (CLIENT_ID && CLIENT_SECRET) {
-    if (cachedToken && Date.now() < tokenExpiry) return { Authorization: `Bearer ${cachedToken}` };
-    // POST /oauth/token — OAuth 2.0 client credentials
-    const r = await fetch(`${BASE}/oauth/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        grant_type: 'client_credentials',
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        scope: process.env.BLAAIZ_OAUTH_SCOPE || undefined,
-      }),
-    });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.message || 'Blaaiz OAuth failed');
-    cachedToken = j.access_token;
-    tokenExpiry = Date.now() + ((j.expires_in || 3600) - 60) * 1000;
-    return { Authorization: `Bearer ${cachedToken}` };
-  }
-  return { 'x-blaaiz-api-key': API_KEY };
+  if (cachedToken && Date.now() < tokenExpiry) return { Authorization: `Bearer ${cachedToken}` };
+  // POST /oauth/token — OAuth 2.0 client credentials, form-encoded. Tokens last 900s, no refresh token.
+  const r = await fetch(`${BASE}/oauth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+    body: new URLSearchParams({ grant_type: 'client_credentials', client_id: CLIENT_ID, client_secret: CLIENT_SECRET, scope: SCOPE }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.access_token) throw new Error(j.message || j.error_description || `Blaaiz OAuth failed (${r.status})`);
+  cachedToken = j.access_token;
+  tokenExpiry = Date.now() + ((j.expires_in || 900) - 60) * 1000;
+  return { Authorization: `Bearer ${cachedToken}` };
 }
 
 async function blaaiz(path, { method = 'GET', body } = {}) {
@@ -111,14 +104,49 @@ export async function createPayout({ from, to, amount, recipient, reference }) {
     from_currency_id: from,
     to_currency_id: to,
     from_amount: Number(amount),
-    bank_id: recipient.bank_id,
+    bank_id: recipient.bank_id, // required for NGN bank_transfer — from GET /api/external/bank
     account_number: recipient.account_number,
-    account_name: recipient.account_name,
+    ...(to !== 'NGN' && recipient.account_name ? { account_name: recipient.account_name } : {}),
+    note: 'Kolo circle payout',
     merchant_reference: reference,
   };
   const d = await blaaiz('/api/external/payout', { method: 'POST', body });
   const t = d.transaction || d;
-  return { mode: MODE, id: t.id, status: (t.status || 'PENDING').toUpperCase(), reference, raw: d, endpoint: 'POST /api/external/payout' };
+  return {
+    mode: MODE, id: t.id, status: normStatus(t.status), reference,
+    fee: t.fee != null ? Number(t.fee) : undefined,
+    recipient_gets: t.recipient?.amount != null ? Number(t.recipient.amount) : undefined,
+    endpoint: 'POST /api/external/payout',
+  };
+}
+
+// Blaaiz docs only show SUCCESSFUL; map anything else into Kolo's timeline.
+function normStatus(s) {
+  const v = String(s || 'PENDING').toUpperCase();
+  if (['SUCCESSFUL', 'SUCCESS', 'COMPLETED'].includes(v)) return 'SUCCESSFUL';
+  if (['FAILED', 'REJECTED', 'CANCELLED', 'REVERSED'].includes(v)) return 'FAILED';
+  if (['PROCESSING', 'IN_PROGRESS', 'INITIATED'].includes(v)) return 'PROCESSING';
+  return 'PENDING';
+}
+
+/** GET /api/external/bank?currency=NGN */
+export async function listBanks(currency = 'NGN') {
+  if (MODE === 'mock') {
+    return {
+      mode: MODE,
+      endpoint: `GET /api/external/bank?currency=${currency}`,
+      banks: [
+        { id: 'mock_gtb', name: 'Guaranty Trust Bank' },
+        { id: 'mock_access', name: 'Access Bank' },
+        { id: 'mock_zenith', name: 'Zenith Bank' },
+        { id: 'mock_opay', name: 'OPay' },
+        { id: 'mock_kuda', name: 'Kuda Microfinance Bank' },
+      ],
+    };
+  }
+  const d = await blaaiz(`/api/external/bank?currency=${encodeURIComponent(currency)}`);
+  const arr = Array.isArray(d) ? d : d.banks || [];
+  return { mode: MODE, endpoint: `GET /api/external/bank?currency=${currency}`, banks: arr.map((b) => ({ id: b.id, name: b.name })) };
 }
 
 /** GET /api/external/transaction/{id} */
@@ -130,9 +158,9 @@ export async function getStatus(id) {
     const status = s < 5 ? 'PENDING' : s < 12 ? 'PROCESSING' : 'SUCCESSFUL';
     return { mode: 'mock', id, status, endpoint: `GET /api/external/transaction/${id}` };
   }
-  const d = await blaaiz(`/api/external/transaction/${id}`);
+  const d = await blaaiz(`/api/external/transaction/${encodeURIComponent(id)}`);
   const t = d.transaction || d;
-  return { mode: MODE, id, status: (t.status || 'PENDING').toUpperCase(), raw: d, endpoint: `GET /api/external/transaction/${id}` };
+  return { mode: MODE, id, status: normStatus(t.status), endpoint: `GET /api/external/transaction/${id}` };
 }
 
 // Tiny helpers shared by Vercel functions and the Vite dev server.

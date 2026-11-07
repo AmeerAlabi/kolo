@@ -232,11 +232,20 @@ function ReleaseSheet({ total, recipient, onClose, onCreated, log }) {
   const [q, setQ] = useState(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  const [acct, setAcct] = useState({ account_name: recipient.name, account_number: recipient.account_number || '', bank_id: recipient.bank_id || '' });
+  const [acct, setAcct] = useState({ account_name: recipient.name, account_number: recipient.account_number || '', bank_id: '' });
+  const [banks, setBanks] = useState([]);
 
   useEffect(() => {
     api('/api/quote', { from: POT_CCY, to: recipient.ccy, amount: +total.toFixed(2) })
       .then((j) => { log({ endpoint: j.endpoint, note: `Quote pot ${POT_CCY}→${recipient.ccy}`, mode: j.mode }); setQ(j); })
+      .catch((e) => setErr(e.message));
+    api(`/api/banks?currency=${recipient.ccy}`)
+      .then((j) => {
+        log({ endpoint: j.endpoint, note: `Loaded ${j.banks.length} ${recipient.ccy} banks`, mode: j.mode });
+        setBanks(j.banks);
+        const gt = j.banks.find((b) => /guaranty|gtb/i.test(b.name)) || j.banks[0];
+        if (gt) setAcct((a) => ({ ...a, bank_id: gt.id }));
+      })
       .catch((e) => setErr(e.message));
   }, []);
 
@@ -263,10 +272,15 @@ function ReleaseSheet({ total, recipient, onClose, onCreated, log }) {
           <div className="fields">
             <label>Account name<input value={acct.account_name} onChange={(e) => setAcct({ ...acct, account_name: e.target.value })} /></label>
             <label>Account number<input inputMode="numeric" value={acct.account_number} onChange={(e) => setAcct({ ...acct, account_number: e.target.value })} /></label>
-            <label>Bank<input value={recipient.bank.split(' ')[0]} readOnly /></label>
+            <label>Bank
+              <select value={acct.bank_id} onChange={(e) => setAcct({ ...acct, bank_id: e.target.value })}>
+                {banks.length === 0 && <option value="">Loading banks…</option>}
+                {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </label>
           </div>
           <p className="fine">All 4 members approved this release. The payout goes from the Kolo wallet to the bank through Blaaiz.</p>
-          <button className="btn dark full" disabled={busy || acct.account_number.length < 10} onClick={send}>{busy ? 'Creating payout…' : 'Send payout'}</button>
+          <button className="btn dark full" disabled={busy || acct.account_number.length < 10 || !acct.bank_id} onClick={send}>{busy ? 'Creating payout…' : 'Send payout'}</button>
         </>
       )}
     </Sheet>

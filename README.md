@@ -19,7 +19,8 @@ All calls run server-side (`/api/*` serverless functions). Keys never reach the 
 
 | Kolo action | Blaaiz endpoint |
 |---|---|
-| Auth | `POST /oauth/token` (client credentials) or legacy API key |
+| Auth | `POST /oauth/token` (client credentials, form-encoded, 15-min token cached server-side) |
+| Recipient bank picker | `GET /api/external/bank?currency=NGN` |
 | Contribution & payout quotes | `POST /api/external/fees/breakdown` |
 | Release pot | `POST /api/external/payout` (`wallet_id`, `customer_id`, `bank_transfer`, `from/to_currency_id`, `from_amount`, `merchant_reference`) |
 | Track status | `GET /api/external/transaction/{id}` |
